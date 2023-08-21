@@ -61,6 +61,8 @@ def process_paragraph(paragraph, global_search_data=None, word_vectors=None):
     """
         
     all_sorted_similarities = []
+    sentence_similarities = []
+
     keyword_data = extract_keywords_from_text({"text": paragraph})
     if 'error' in keyword_data:
         return {"error": keyword_data}
@@ -83,6 +85,8 @@ def process_paragraph(paragraph, global_search_data=None, word_vectors=None):
         current_paragraph_similarity = 0
         current_paragraph_similarity_max = 0
 
+        print("Paragraph sentences", clean_paragraphs)
+
         for clean_paragraph in clean_paragraphs:
             if word_vectors:
                 average_similarity, max_similarity, individual_similarity, sorted_similarity = calculate_cosine_similarity_model(clean_paragraph, clean_search_data, word_vectors)
@@ -93,17 +97,21 @@ def process_paragraph(paragraph, global_search_data=None, word_vectors=None):
                 all_sorted_similarities.extend(sorted_similarity)
 
             cosine_data = {
+                'sentence': clean_paragraph,
                 'average_similarity': average_similarity,
                 'max_similarity': max_similarity,
                 'sorted_similarity': sorted_similarity
             }
+            sentence_similarities.append(cosine_data)
             paragraph_data['cosine_similarity'] = cosine_data
             current_paragraph_similarity_max = max(max_similarity, current_paragraph_similarity_max)
             current_paragraph_similarity += average_similarity
 
+        print("Length of paragraph similarities in paragraph proccess is", len(sentence_similarities))
+
         current_paragraph_similarity /= len(clean_paragraphs)
         #current_paragraph_similarity_max /= len(clean_paragraphs)
-    return paragraph_data, current_paragraph_similarity, current_paragraph_similarity_max, all_sorted_similarities
+    return paragraph_data, current_paragraph_similarity, current_paragraph_similarity_max, all_sorted_similarities, sentence_similarities
 
 
 def process_all_paragraphs(paragraphs, use_model=False, word_vectors=None, input_search_data=None):
@@ -120,12 +128,13 @@ def process_all_paragraphs(paragraphs, use_model=False, word_vectors=None, input
     Returns:
     - tuple: Contains processed data for each paragraph, maximum similarity across all paragraphs, total 
              similarities, number of paragraphs processed, a sorted list of similarities, global search data, 
-             and any errors encountered during processing.
+             overall entence similarities, and any errors encountered during processing.
     """
         
     processed_data = []
     errors = []
     all_sorted_similarities = []
+    sentence_similarities_overall = []
     max_similarity_overall = 0
     total_similarities = 0
     total_paragraphs_processed = 0
@@ -134,12 +143,15 @@ def process_all_paragraphs(paragraphs, use_model=False, word_vectors=None, input
     for index, paragraph in enumerate(paragraphs):
         try:
             if use_model:
-                paragraph_data, current_paragraph_similarity, current_paragraph_similarity_max, sorted_similarities = process_paragraph(paragraph, input_search_data, word_vectors)
+                paragraph_data, current_paragraph_similarity, current_paragraph_similarity_max, sorted_similarities, sentence_similarities = process_paragraph(paragraph, input_search_data, word_vectors)
                 all_sorted_similarities.extend(sorted_similarities)
+                sentence_similarities_overall.extend(sentence_similarities)
             else:
-                paragraph_data, current_paragraph_similarity, current_paragraph_similarity_max, sorted_similarities = process_paragraph(paragraph)
+                paragraph_data, current_paragraph_similarity, current_paragraph_similarity_max, sorted_similarities, sentence_similarities = process_paragraph(paragraph)
                 global_search_data = paragraph_data['search_results']
                 all_sorted_similarities.extend(sorted_similarities)
+                sentence_similarities_overall.extend(sentence_similarities)
+
 
 
             total_similarities += current_paragraph_similarity
@@ -150,4 +162,8 @@ def process_all_paragraphs(paragraphs, use_model=False, word_vectors=None, input
         except Exception as e:
             errors.append({"paragraph_index": index, "error_message": str(e)})
 
-    return processed_data, max_similarity_overall, total_similarities, total_paragraphs_processed, all_sorted_similarities, global_search_data, errors
+        print("Lengh of in loop sentence similarities ", len(sentence_similarities_overall))
+
+    print("Final Length of sentence similarities is", len(sentence_similarities_overall))
+
+    return processed_data, max_similarity_overall, total_similarities, total_paragraphs_processed, all_sorted_similarities, global_search_data, sentence_similarities_overall, errors

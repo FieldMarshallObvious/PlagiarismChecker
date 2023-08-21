@@ -25,6 +25,9 @@ word_vectors = api.load("word2vec-google-news-300")
 #word_vectors = api.load("glove-wiki-gigaword-50")
 #word_vectors = api.load("fasttext-wiki-news-subwords-300")
 
+sentence_similarities = []
+your_text = ""
+
 app = Flask(__name__)
 CORS(app)
 
@@ -438,11 +441,18 @@ def find_plagiarism_route():
     total_similarities = 0 
     total_paragraphs_processed = 0
     global_search_data = []
+    global sentence_similarities
+    global your_text
 
-    processed_data, max_similarity_overall, total_similarities, total_paragraphs_processed, all_sorted_similarities, global_search_data, errors = process_all_paragraphs(paragraphs)
+    # Store the text passed in by the user
+    your_text = data["text"]
 
+    # Process via TFIDF
+    processed_data, max_similarity_overall, total_similarities, total_paragraphs_processed, all_sorted_similarities, global_search_data, sentence_similarities, errors = process_all_paragraphs(paragraphs)
+
+    # If the TFIDF exceeds 30% similarity check with the word2vec model
     if max_similarity_overall > 0.3:
-        processed_data, max_similarity_overall, total_similarities, total_paragraphs_processed, all_sorted_similarities, global_search_data, errors = process_all_paragraphs(paragraphs, use_model=True, word_vectors=word_vectors, input_search_data=global_search_data)
+        processed_data, max_similarity_overall, total_similarities, total_paragraphs_processed, all_sorted_similarities, global_search_data,  sentence_similarities, errors = process_all_paragraphs(paragraphs, use_model=True, word_vectors=word_vectors, input_search_data=global_search_data)
 
     average_similarity_overall = total_similarities / total_paragraphs_processed if total_paragraphs_processed else 0
 
@@ -462,6 +472,16 @@ def find_plagiarism_route():
 
 
     return jsonify(response_data)
+
+@app.route('/sentence_similarities', methods=['GET'])
+def get_sentences_route():
+    response_data = { "sentence_similarities": sentence_similarities }
+    return response_data
+
+@app.route('/your_text', methods=['GET'])
+def get_your_text_route():
+    response_data = { "your_text": your_text }
+    return response_data
 
 
 
