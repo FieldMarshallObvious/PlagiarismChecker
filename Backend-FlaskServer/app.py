@@ -174,7 +174,6 @@ def cosine_similarity_route(data=None):
         clean_target_texts = [{'content': clean_texts([item['content']]), **{k: v for k, v in item.items() if k != 'content'}} for item in search_data]
 
 
-    print("Target texts are", data['target_texts'])
     clean_input_texts = clean_texts(data['input_texts'])
     if data.get('target_texts'):       
         clean_target_texts = clean_texts(data['target_texts'])

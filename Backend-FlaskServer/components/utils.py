@@ -4,6 +4,17 @@ from components.Similarity import calculate_cosine_similarity_model, TFID
 
 
 def check_request_data(data, required_fields):
+    """
+    Validates the presence and type of required fields in the provided data.
+    
+    Parameters:
+    - data (dict): The data to validate.
+    - required_fields (dict): A dictionary mapping required field names to their expected types.
+
+    Returns:
+    - tuple: A message and status code indicating an error, or None if validation passes.
+    """
+
     if not data:
         return "Invalid data", 400
 
@@ -18,12 +29,37 @@ def check_request_data(data, required_fields):
     return None
 
 def extract_keywords_from_text(data):
+    """
+    Wrapper to extract keywords from dict text obeject.
+    
+    Parameter:
+    - data (dict): Dictionary containing the 'text' key with textual data.
+
+    Returns:
+    - dict: A dictionary with extracted keywords under the 'results' key.
+    """
+
     text = data['text']
     results = extract_keywords(text)
     return {"results": results}
 
 
 def process_paragraph(paragraph, global_search_data=None, word_vectors=None):
+    """
+    Processes a given paragraph: extracts keywords, queries results based on these keywords, 
+    segments the paragraph by sentences, and computes cosine similarity between the paragraph 
+    and search results using either word vectors or TF-IDF.
+    
+    Parameters:
+    - paragraph (str): Text paragraph to process.
+    - global_search_data (dict, optional): Precomputed search data to use, if available.
+    - word_vectors (model, optional): Pre-trained word vectors, if available.
+
+    Returns:
+    - tuple: Contains processed paragraph data, average similarity, maximum similarity, and 
+             sorted list of similarities.
+    """
+        
     all_sorted_similarities = []
     keyword_data = extract_keywords_from_text({"text": paragraph})
     if 'error' in keyword_data:
@@ -71,6 +107,22 @@ def process_paragraph(paragraph, global_search_data=None, word_vectors=None):
 
 
 def process_all_paragraphs(paragraphs, use_model=False, word_vectors=None, input_search_data=None):
+    """
+    Processes a list of paragraphs to extract keywords, compute cosine similarities, and capture any errors.
+    Can utilize a provided word vector model or default to TF-IDF for similarity calculations.
+
+    Parameters:
+    - paragraphs (list): List of text paragraphs to process.
+    - use_model (bool, optional): Flag to determine if word vectors should be used for similarity calculation.
+    - word_vectors (model, optional): Pre-trained word vectors, if available.
+    - input_search_data (dict, optional): Precomputed search data, if available.
+
+    Returns:
+    - tuple: Contains processed data for each paragraph, maximum similarity across all paragraphs, total 
+             similarities, number of paragraphs processed, a sorted list of similarities, global search data, 
+             and any errors encountered during processing.
+    """
+        
     processed_data = []
     errors = []
     all_sorted_similarities = []
