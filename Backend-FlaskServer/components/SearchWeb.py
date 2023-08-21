@@ -32,7 +32,6 @@ def search_google_content(tokens, pages=1):
 
     Notes:
     - Google CSE API provides up to 10 results per page, so the start index for each page is calculated accordingly.
-    - The function assumes that the necessary modules (os, urllib, json) have been imported.
     """
     GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
     GOOGLE_CSE_ID = os.environ.get("GOOGLE_CSE_ID")
