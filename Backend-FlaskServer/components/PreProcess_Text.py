@@ -3,8 +3,10 @@ import string
 import re
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from nltk.tokenize import sent_tokenize
 from nltk.stem import WordNetLemmatizer
 from rake_nltk import Rake
+
 
 
 
@@ -117,3 +119,36 @@ print(keywords)
 # Example usage:
 text = "The quick brown foxes are jumping over the lazy dogs."
 print(preprocess_text(text))
+
+
+def split_into_segments(text, character_length=100, num_segments=3):
+    # Create a list to store the segments
+    desired_segment_length = len(text) // num_segments
+    segments = []
+
+    if ( len(text) < character_length ):
+        return [text]
+
+    for _ in range(num_segments - 1):
+        # Find the last space or punctuation near the desired segment length
+        split_index = text.rfind(' ', 0, desired_segment_length)
+        if split_index == -1:
+            split_index = text.rfind('.', 0, desired_segment_length)
+        if split_index == -1:
+            split_index = desired_segment_length
+        
+        # Append the segment to our list
+        segments.append(text[:split_index].strip())
+        # Remove the segment from the text
+        text = text[split_index:].strip()
+
+    # Add any remaining text as the last segment
+    if text:
+        segments.append(text)
+
+    return segments
+
+def segment_text_by_sentences(text):
+    sentences = sent_tokenize(text)
+    for sentence in sentences:
+        yield sentence

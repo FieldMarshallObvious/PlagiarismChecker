@@ -1,13 +1,12 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from components.SearchWeb import query_clean_results
-from components.PreProcess_Text import extract_keywords, clean_texts,preprocess_text
+from components.PreProcess_Text import extract_keywords, clean_texts, preprocess_text, segment_text_by_sentences, split_into_segments
 from components.Similarity import calculate_cosine_similarity, calculate_cosine_similarity_model, TFID
-from components.utils import check_request_data, extract_keywords_from_text
+from components.utils import check_request_data, extract_keywords_from_text, process_all_paragraphs
 from components.DownloadContent import get_cdx_records, download_common_crawl_data, get_text_from_link
 import nltk
 nltk.download('punkt')
-from nltk.tokenize import sent_tokenize
 import logging
 
 import gensim.downloader as api
@@ -15,40 +14,6 @@ import gensim.downloader as api
 word_vectors = api.load("word2vec-google-news-300")
 #word_vectors = api.load("glove-wiki-gigaword-50")
 #word_vectors = api.load("fasttext-wiki-news-subwords-300")
-
-
-def split_into_segments(text, character_length=100, num_segments=3):
-    # Create a list to store the segments
-    desired_segment_length = len(text) // num_segments
-    segments = []
-
-    if ( len(text) < character_length ):
-        return [text]
-
-    for _ in range(num_segments - 1):
-        # Find the last space or punctuation near the desired segment length
-        split_index = text.rfind(' ', 0, desired_segment_length)
-        if split_index == -1:
-            split_index = text.rfind('.', 0, desired_segment_length)
-        if split_index == -1:
-            split_index = desired_segment_length
-        
-        # Append the segment to our list
-        segments.append(text[:split_index].strip())
-        # Remove the segment from the text
-        text = text[split_index:].strip()
-
-    # Add any remaining text as the last segment
-    if text:
-        segments.append(text)
-
-    return segments
-
-def segment_text_by_sentences(text):
-    sentences = sent_tokenize(text)
-    for sentence in sentences:
-        yield sentence
-
 
 app = Flask(__name__)
 CORS(app)
@@ -77,32 +42,57 @@ def search_content():
     
     return jsonify({"results": results})
 
-@app.route('/cosine-similarity', methods=['GET'])
+@app.route('/cosine-similarity', methods=['POST'])
 def cosine_similarity_route(data=None):
     if not data:
         data = request.json
     required_fields = {
-        'input_texts': list,
-        'target_texts': list
+        'input_texts': list    
     }
     error = check_request_data(data, required_fields)
     if error:
         return error
+    
+    search_data = []
+    clean_input_texts = []
+    clean_target_texts = []
+    sorted_similaritiy = []
+    
+    if not data.get('target_texts'):     
+        input_data = {"text": data['input_texts'][0]}          
+        keywords = extract_keywords_from_text(input_data)
+        search_data = query_clean_results(keywords)
+        clean_target_texts = [{'content': clean_texts([item['content']]), **{k: v for k, v in item.items() if k != 'content'}} for item in search_data]
+
 
     clean_input_texts = clean_texts(data['input_texts'])
-    clean_target_texts = [{'content': clean_texts([item['content']]), **{k: v for k, v in item.items() if k != 'content'}} for item in data['target_texts']]
+    if data.get('target_texts'):       
+        clean_target_texts = [{'content': clean_texts([item['content']]), **{k: v for k, v in item.items() if k != 'content'}} for item in data['target_texts']]
 
     results = []
+    seen_links = set()
+    topNLinks = []
     for input_text in clean_input_texts:
-        average_similarity, max_similarity, individual_similarity = calculate_cosine_similarity(input_text, clean_target_texts)
+        average_similarity, max_similarity, individual_similarity, sorted_similaritiy = calculate_cosine_similarity(input_text, clean_target_texts, True if data.get('target_texts') else False)
+        
+        for item in sorted(sorted_similaritiy, key=lambda x: x['similarity'], reverse=True):
+            if item['link'] not in seen_links:
+                topNLinks.append(item)
+                seen_links.add(item['link'])
+            if len(topNLinks) == 5:
+                break
+
+        print("Sorted URls", topNLinks)
+        
         results.append({
             'input_text': input_text,
             'average_similarity': average_similarity,
-            'max_similarity': max_similarity,
-            'individual_similarity': individual_similarity
+            'similarity': max_similarity,
+            'individual_similarity': individual_similarity,
+            'SortedUrls': topNLinks
         })
 
-    return jsonify(results)
+    return jsonify(results[0])
 
 @app.route('/cosine-similarity-model', methods=['GET'])
 def cosine_similarity_model_route(data=None):
@@ -120,16 +110,29 @@ def cosine_similarity_model_route(data=None):
     input_text_sentence = segment_text_by_sentences(data['input_texts'][0])
     clean_input_texts = clean_texts(input_text_sentence)
     clean_target_texts = clean_texts(data['target_texts'])
-    print("texts type", type(data['input_texts']))
-    print("Clean input texts", clean_input_texts)
+
     results = []
+    topNLinks = []
+    sorted_similarity = []
+    seen_links = []
+    
+
     for input_text in clean_input_texts:
             average_similarity, max_similarity, individual_similarity, sorted_similarity = calculate_cosine_similarity_model(input_text, clean_target_texts, word_vectors, True)
+            
+            for item in sorted(sorted_similarity, key=lambda x: x['similarity'], reverse=True):
+                if item['link'] not in seen_links:
+                    topNLinks.append(item)
+                    seen_links.add(item['link'])
+                if len(topNLinks) == 5:
+                    break
+            
             results.append({
                 'input_text': input_text,
                 'average_similarity': average_similarity,
                 'max_similarity': max_similarity,
-                'individual_similarity': individual_similarity
+                'individual_similarity': individual_similarity,
+                'SortedUrls': topNLinks
             })
 
     return jsonify(results)
@@ -184,61 +187,14 @@ def find_plagiarism_route():
     max_similarity_overall = 0 
     total_similarities = 0 
     total_paragraphs_processed = 0
+    global_search_data = []
 
     print("Segments")
 
-    for index, paragraph in enumerate(paragraphs):
-        try:
-            keyword_data = extract_keywords_from_text({"text":paragraph})
-            if 'error' in keyword_data:
-                return jsonify(keyword_data), 400
-            
-            search_data = query_clean_results(keyword_data['results'])
-            if 'error' in search_data:
-                print("exception occured when searchin data")
-                raise Exception(search_data['error'])
+    processed_data, max_similarity_overall, total_similarities, total_paragraphs_processed, all_sorted_similarities, global_search_data, errors = process_all_paragraphs(paragraphs)
 
-            paragraph_data = {
-                'paragraph': paragraph,
-                'keywords': keyword_data['results'],
-                'search_results': search_data
-            }
-
-
-            if search_data:
-                paragraph_sentences = segment_text_by_sentences(paragraph)
-                clean_paragraphs = clean_texts(paragraph_sentences)
-                clean_search_data = [{'content': clean_texts([item['content']]), **{k: v for k, v in item.items() if k != 'content'}} for item in search_data]
-
-                current_paragraph_similarity = 0
-                current_paragraph_similarity_max = 0
-
-                for clean_paragraph in clean_paragraphs:
-                    average_similarity, max_similarity, individual_similarity, sorted_similarity = calculate_cosine_similarity_model(clean_paragraph, clean_search_data, word_vectors)
-                    cosine_data = {
-                        'average_similarity': average_similarity, 
-                        'max_similarity': max_similarity, 
-                        'sorted_similarity': sorted_similarity
-                    }
-                    paragraph_data['cosine_similarity'] = cosine_data
-                    current_paragraph_similarity_max += max_similarity 
-                    all_sorted_similarities.extend(sorted_similarity)        
-                    current_paragraph_similarity += average_similarity
-                    print("Max similarity is ", max_similarity)
-
-
-                current_paragraph_similarity /= len(clean_paragraphs)
-                current_paragraph_similarity_max /= len(clean_paragraphs)
-                total_similarities += current_paragraph_similarity
-                max_similarity_overall = max(max_similarity_overall, current_paragraph_similarity_max)
-                total_paragraphs_processed += 1
-                    
-                print("Calculated similarity")
-
-            processed_data.append(paragraph_data)
-        except Exception as e:
-            errors.append({"paragraph_index": index, "error_message": str(e)})
-
+    if max_similarity_overall > 0.3:
+        processed_data, max_similarity_overall, total_similarities, total_paragraphs_processed, all_sorted_similarities, global_search_data, errors = process_all_paragraphs(paragraphs, use_model=True, word_vectors=word_vectors, input_search_data=global_search_data)
 
     average_similarity_overall = total_similarities / total_paragraphs_processed if total_paragraphs_processed else 0
 
@@ -252,7 +208,7 @@ def find_plagiarism_route():
         if len(topNLinks) == 5:
             break
 
-    response_data = {"results": processed_data, "similarity": average_similarity_overall, "max_similarity": max_similarity_overall, "SortedUrls": topNLinks}
+    response_data = {"results": processed_data, "similarity": max_similarity_overall, "max_similarity": max_similarity_overall, "SortedUrls": topNLinks}
     if errors:
         response_data['errors'] = errors
 

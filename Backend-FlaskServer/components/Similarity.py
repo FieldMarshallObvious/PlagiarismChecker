@@ -98,7 +98,7 @@ def cosine_similarity_tokens(counter1, counter2, all_tokens):
     
     return dot_product / (magnitude1 * magnitude2)
 
-def calculate_cosine_similarity(input_text, target_texts):
+def calculate_cosine_similarity(input_text, target_texts, notJSON = False):
     num_targets = len(target_texts)
     total_similarity = 0.0
     max_similarity = 0.0
@@ -108,18 +108,25 @@ def calculate_cosine_similarity(input_text, target_texts):
     counter1 = Counter(tokens1)
 
     for index, target_text in enumerate(target_texts):
-        tokens2 = preprocess_text(target_text)
+        tokens2 = preprocess_text(target_text["content"][0] if not notJSON else target_text)
         counter2 = Counter(tokens2)
 
         # Get unique tokens
         all_tokens = set(tokens1).union(tokens2)
         current_similarity = cosine_similarity_tokens(counter1, counter2, all_tokens)
         total_similarity += current_similarity
-        individual_similarity.append({f"{index}": current_similarity})
+        individual_similarity.append({
+                    'link_index': index,
+                    'similarity': current_similarity,
+                    'link': target_texts[index]["link"] if not notJSON else "",
+                    'title': target_texts[index]["title"] if not notJSON else "",
+                })        
         max_similarity = max(max_similarity, current_similarity)
 
     average_similarity = total_similarity / num_targets if num_targets > 0 else 0
-    return average_similarity, max_similarity, individual_similarity
+    sorted_similarity = sorted(individual_similarity, key=lambda x: x['similarity'], reverse=True)
+
+    return average_similarity, max_similarity, individual_similarity, sorted_similarity
 
 def segment_text(text, segment_length):
     tokens = preprocess_text(text)
@@ -167,11 +174,11 @@ def TFID(input_text, target_texts, notJSON = False):
     target_vectors = tfidf_matrix[len(input_segments):]
 
     for i, segment_vector in enumerate(segment_vectors):
-        print("Segment is:", input_segments[i])
+        #print("Segment is:", input_segments[i])
 
         for j, target_vector in enumerate(target_vectors):
             target_content = target_texts[j]["content"][0] if not notJSON else target_texts[j]
-            print("Target text:", target_content)
+            #print("Target text:", target_content)
 
             current_similarity = cosine_similarity(segment_vector, target_vector)[0][0]
             
@@ -185,7 +192,7 @@ def TFID(input_text, target_texts, notJSON = False):
             })
 
             max_similarity = max(max_similarity, current_similarity)
-            print("Similarity is", current_similarity)
+            #print("Similarity is", current_similarity)
 
     average_similarity = total_similarity / (num_targets * len(input_segments)) if num_targets > 0 else 0
 
