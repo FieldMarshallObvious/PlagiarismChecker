@@ -14,9 +14,6 @@ def tokens_to_vector(tokens, model):
 
     tokens_list = tokens.split()
 
-    print("token list", tokens_list)
-
-
     for token in tokens_list:
         print("token is", token)
         if token in model: 
@@ -154,11 +151,6 @@ def TFID(input_text, target_texts, notJSON = False):
     max_similarity = 0.0
     individual_similarity = []
 
-    #print("Input text", input_text)
-    #print("input text type", type(input_text))
-    #print("Target texts", target_texts)
-    #print("Target text type", type(target_texts))
-
     input_segments = [input_text]
 
     # Prepare the corpus for TF-IDF Vectorizer
@@ -174,11 +166,8 @@ def TFID(input_text, target_texts, notJSON = False):
     target_vectors = tfidf_matrix[len(input_segments):]
 
     for i, segment_vector in enumerate(segment_vectors):
-        #print("Segment is:", input_segments[i])
 
         for j, target_vector in enumerate(target_vectors):
-            target_content = target_texts[j]["content"][0] if not notJSON else target_texts[j]
-            #print("Target text:", target_content)
 
             current_similarity = cosine_similarity(segment_vector, target_vector)[0][0]
             
@@ -192,7 +181,6 @@ def TFID(input_text, target_texts, notJSON = False):
             })
 
             max_similarity = max(max_similarity, current_similarity)
-            #print("Similarity is", current_similarity)
 
     average_similarity = total_similarity / (num_targets * len(input_segments)) if num_targets > 0 else 0
 
@@ -206,27 +194,20 @@ def calculate_cosine_similarity_model(input_text, target_texts, model, notJSON =
     max_similarity = 0.0
     individual_similarity = []
 
-    #print("Input text", input_text)
-    #print("input text type", type(input_text))
-    #print("Target texts", target_texts)
-    #print("Target text type", type(target_texts))
 
     input_segments = [input_text]
 
     corpus = build_corpus(input_text, target_texts, notJSON)
 
     tfidf_vectorizer = TfidfVectorizer()
-    tfidf_matrix = tfidf_vectorizer.fit_transform(corpus)
+    tfidf_vectorizer.fit_transform(corpus)
 
     for i, segment in enumerate(input_segments):
-        #print("Segment is:", segment)
         vector1 = tokens_to_vector_with_tfidf(segment, model, tfidf_vectorizer)
-        #print("Vector 1", vector1)
 
         for j, target_text in enumerate(target_texts):
-            #print("Target text:", target_text["content"][0] if not notJSON else target_text)
             vector2 = tokens_to_vector_with_tfidf(target_text["content"][0] if not notJSON else target_text, model, tfidf_vectorizer)   
-            #print("Vector 2", vector2)
+
             current_similarity = cosine_similarity_continuous(vector1, vector2)
             total_similarity += current_similarity
             individual_similarity.append({
@@ -238,7 +219,6 @@ def calculate_cosine_similarity_model(input_text, target_texts, model, notJSON =
                     })
             
             max_similarity = max(max_similarity, current_similarity)
-            #print("Similarity is", current_similarity)
 
     average_similarity = total_similarity / (num_targets * len(input_segments)) if num_targets > 0 else 0
 

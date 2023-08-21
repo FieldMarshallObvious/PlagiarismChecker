@@ -29,8 +29,6 @@ def process_paragraph(paragraph, global_search_data=None, word_vectors=None):
     if 'error' in keyword_data:
         return {"error": keyword_data}
     
-    print("Global search data", global_search_data)
-
     search_data = query_clean_results(keyword_data['results']) if not global_search_data else global_search_data
     if 'error' in search_data:
         raise Exception(search_data['error'])
@@ -42,25 +40,19 @@ def process_paragraph(paragraph, global_search_data=None, word_vectors=None):
     }
 
     if search_data:
-        print("Paragraph type", type(paragraph))
-        print("Search data type", type(search_data))
         paragraph_sentences = segment_text_by_sentences(paragraph)
         clean_paragraphs = clean_texts(paragraph_sentences)
         clean_search_data = [{'content': clean_texts([item['content']]), **{k: v for k, v in item.items() if k != 'content'}} for item in search_data]
 
         current_paragraph_similarity = 0
         current_paragraph_similarity_max = 0
-        print("Clean paragraphs", clean_paragraphs)
 
         for clean_paragraph in clean_paragraphs:
-            print("Clean paragraph", clean_paragraph)
             if word_vectors:
-                print("using word vectors")
                 average_similarity, max_similarity, individual_similarity, sorted_similarity = calculate_cosine_similarity_model(clean_paragraph, clean_search_data, word_vectors)
                 all_sorted_similarities.extend(sorted_similarity)
 
             else:
-                print("Not using word vectors")
                 average_similarity, max_similarity, individual_similarity, sorted_similarity = TFID(clean_paragraph, clean_search_data)
                 all_sorted_similarities.extend(sorted_similarity)
 

@@ -5,6 +5,15 @@ from bs4 import BeautifulSoup
 
 @lru_cache(maxsize=None)
 def get_latest_index():
+    """
+    Retrieve the latest CDX (Common Data eXchange) index endpoint from Common Crawl's collection info.
+
+    This function is memoized using an LRU cache for performance optimization.
+
+    Returns:
+    - str: The endpoint URL for the latest CDX index.
+    - None: In case of request error or inability to fetch the index.
+    """
     cdx_url = "http://index.commoncrawl.org/collinfo.json"
     try:
         colls = requests.get(cdx_url).json()
@@ -14,6 +23,17 @@ def get_latest_index():
         return None
 
 def get_cdx_records(url, limit=1):
+    """
+    Get the latest CDX (Common Data eXchange) record for a given URL using a remote index service.
+
+    Parameters:
+    - url (str): The target URL for which the CDX records are fetched.
+    - limit (int, optional): The maximum number of records to fetch. Defaults to 1.
+
+    Returns:
+    - dict: The latest CDX record for the provided URL, parsed from JSON.
+    - None: If no record is found, an error occurs, or the latest index isn't available.
+    """
     latest_index = get_latest_index()
     if not latest_index:
         return None
@@ -36,7 +56,11 @@ def get_cdx_records(url, limit=1):
 
 def download_common_crawl_data(record, out_file):
     """
-    Download data from Common Crawl for the given CDX record.
+    Download a WARC record from Common Crawl based on the CDX record and save it to an output file.
+
+    Parameters:
+    - record (dict): CDX record with 'offset', 'length', and 'filename'.
+    - out_file (str): File path to save the WARC record.
     """
     offset, length = int(record['offset']), int(record['length'])
     warc_url = record['filename']
@@ -62,6 +86,16 @@ if __name__ == "__main__":
         print(f"No data found for {target_url}")
 
 def get_text_from_link(url):
+    """
+    Fetch and extract textual content from the given URL, specifically from the <p> tags.
+
+    Parameters:
+    - url (str): The target URL to extract text from.
+
+    Returns:
+    - str: Extracted text from the provided URL.
+    """
+        
     # Fetch the content from the URL
     headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
