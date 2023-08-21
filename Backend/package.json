@@ -1,0 +1,24 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "jest": {
+    "testRunner": "jest-circus/runner"
+  },  
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "react-vis": "^1.12.1"
+  },
+  "devDependencies": {
+    "jest": "^29.6.2",
+    "jest-circus": "^29.6.2"
+  }
+}
