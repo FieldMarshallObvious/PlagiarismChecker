@@ -1,0 +1,15 @@
+.popoutcontainer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 50%; /* adjust to the desired width of your popout */
+    height: 100vh;
+    background-color: #ffffff; 
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.3); /* shadow on the left side */
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+}
+
+.popoutcontainer.open {
+    transform: translateX(0);
+}

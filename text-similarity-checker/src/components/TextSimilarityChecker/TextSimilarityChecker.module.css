@@ -1,0 +1,67 @@
+.TextFormContainer {
+    box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25); 
+}
+
+.TextSimilarityContainer > * {
+    transition: all 0.3s ease !important; 
+}
+
+.centered {
+    margin: 0 auto;
+}
+
+
+.boxTitle {
+    font-weight: bold;
+    font-size: 30px;
+}
+
+.percentAmount {
+    font-weight: bold;
+    font-size: 25px;
+    margin-top: 20px;
+}
+
+.EmphasizeRed {
+    font-weight: bold;
+    font-size: 25px;
+    color: #C91C24;
+    margin-top: 20px;
+    margin-left: 5px;
+}
+
+.EmphasizeRedAnimated::after {
+    content: '...';
+    animation: loadingDots 2s infinite;
+    white-space: pre; /* To preserve spaces and line breaks in content */
+}
+
+.CheckButton {
+    background-color: #E7242D !important;
+    border-color: #E7242D !important;
+    font-weight: bold;
+    font-size: 20px;
+    border-radius: 12px;
+}
+
+.CheckButton:hover {
+    background-color: #C91C24 !important;
+    border-color: #C91C24 !important;
+}
+
+.CheckButton::after {
+    background-color: #C91C24 !important;
+    border-color: #C91C24 !important;  
+}
+
+.percentSimilarContainer {
+    width: 100%;
+    justify-content: center;
+}
+
+
+@keyframes loadingDots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    100% { content: '...'; }
+}
